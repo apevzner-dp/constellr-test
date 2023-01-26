@@ -1,0 +1,5 @@
+pystac_client
+xarray
+rioxarray
+matplotlib
+zarr
