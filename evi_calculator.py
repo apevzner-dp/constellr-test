@@ -14,11 +14,11 @@ class EVICalculator:
     COLLECTION = "sentinel-s2-l2a-cogs"  # Sentinel-2, Level 2A, COGs
     MAX_THREADS = 8
 
-    def __init__(self, polygon_file, n_days_ago, output_file):
+    def __init__(self, polygon_file, n_days_ago, zarr_output_dir):
         """
-        The output file where the calculated EVI will be stored in Zarr format
+        The output where the calculated EVI will be stored in Zarr format
         """
-        self._output_file = output_file
+        self._zarr_output_dir = zarr_output_dir
 
         """
         The flag that indicates that all the available scenes have been pushed to the processing queue
@@ -66,8 +66,8 @@ class EVICalculator:
             collections=[self.COLLECTION],
             intersects=self._aoi_dict,
             datetime=f'{self._start_date}/{self._end_date}',
-            max_items=3,
-            limit=3
+            max_items=None,
+            limit=100
         )
 
         self._start_processing_threads()
@@ -162,7 +162,7 @@ class EVICalculator:
             count_mask_merged += xarray.merge([self._evi_sums[keys[i]]['count_mask'], zeros_array_merged], compat='override', fill_value=0.0)
         
         self._evi_avg = evi_merged / count_mask_merged
-        self._evi_avg.to_zarr(self._output_file)
+        self._evi_avg.to_zarr(self._zarr_output_dir)
     
     def _plot_evi_avg(self):
         x = self._evi_avg.x.values
