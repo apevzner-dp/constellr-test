@@ -13,6 +13,7 @@ class EVICalculator:
     API_URL = 'https://earth-search.aws.element84.com/v0'
     COLLECTION = "sentinel-s2-l2a-cogs"  # Sentinel-2, Level 2A, COGs
     MAX_THREADS = 8
+    PAGE_SIZE = 100
 
     def __init__(self, polygon_file, n_days_ago, zarr_output_dir):
         """
@@ -62,23 +63,9 @@ class EVICalculator:
         self._end_date = datetime.now().strftime('%Y-%m-%d')
     
     def calculate(self):
-        search = self._client.search(
-            collections=[self.COLLECTION],
-            intersects=self._aoi_dict,
-            datetime=f'{self._start_date}/{self._end_date}',
-            max_items=None,
-            limit=100
-        )
-
         self._start_processing_threads()
-
-        for item in search.items():
-            self._processing_queue.put(item)
-            print('An item is pushed to the queue')
-        self._querying_finished = True
-
+        self._read_scenes()
         self._wait_for_processing_threads()
-
         self._calculate_evi_avg()
         self._plot_evi_avg()
     
@@ -91,6 +78,21 @@ class EVICalculator:
 
         for thread in self._threads:
             thread.start()
+    
+    def _read_scenes(self):
+        search = self._client.search(
+            collections=[self.COLLECTION],
+            intersects=self._aoi_dict,
+            datetime=f'{self._start_date}/{self._end_date}',
+            max_items=None,
+            limit=self.PAGE_SIZE
+        )
+
+        for item in search.items():
+            self._processing_queue.put(item)
+            print('An item is pushed to the queue')
+
+        self._querying_finished = True
     
     def _wait_for_processing_threads(self):
         for thread in self._threads:
